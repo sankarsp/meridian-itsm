@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% block title %}Change requests{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Change requests</h1><p>Standard changes are pre-approved. Normal changes need two CAB votes, and emergency changes need one ECAB authorization from a Change Manager. Nobody can approve a change they raised or will implement.</p></div>
+  <div class="row"><a class="btn {{ 'locked' if create_block else 'primary' }}" href="{{ url_for('changes', new=1) }}" {% if create_block %}title="{{ create_block }}"{% endif %}>Raise change</a></div></div>
+{% if show_form %}
+<div class="panel panel-b"><form class="form" method="post" action="{{ url_for('changes') }}">
+  <div class="field wide"><label for="chT">Change title</label><input id="chT" name="title" required placeholder="e.g. Increase card-auth connection pool to 400"></div>
+  <div class="field"><label for="chY">Type</label><select id="chY" name="type">{% for t in types %}<option {% if t == 'Normal' %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="chR">Risk</label><select id="chR" name="risk">{% for r in risks %}<option {% if r == 'Moderate' %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="chI">Implementer</label><select id="chI" name="implementer">{% for u in people %}<option value="{{ u.id }}" {% if u.id == me %}selected{% endif %}>{{ u.name }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="chW">Planned window</label><input id="chW" name="win" placeholder="Oct 12, 21:00–22:00 ET"></div>
+  <div class="row"><button class="btn primary" type="submit">Create change</button><a class="btn" href="{{ url_for('changes') }}">Cancel</a></div>
+</form></div>
+{% endif %}
+<div class="panel tw"><table>
+<thead><tr><th>Number</th><th>Title</th><th>Type</th><th>Risk</th><th>Requested by</th><th>State</th><th>Window</th></tr></thead>
+<tbody>
+{% for x in rows %}
+<tr class="{{ 'sel' if sel and x.id == sel.id }}"><td class="mono"><a href="{{ url_for('changes', id=x.id) }}" style="color:inherit">{{ x.id }}</a></td><td><a href="{{ url_for('changes', id=x.id) }}" style="color:inherit;text-decoration:none">{{ x.title }}</a></td><td>{{ x.type }}</td><td>{{ x.risk }}</td><td>{{ ctl.name(x.requested_by) }}</td><td>{{ pill(x.state) }}</td><td class="muted">{{ x.win or '—' }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% if d %}{% set c = d.c %}
+<div class="panel"><div class="panel-h"><div><span class="mono muted">{{ c.id }}</span><h2>{{ c.title }}</h2></div>
+  <div class="row">
+    {% if c.state == 'New' %}{{ btn('submit_change', c.id, variant='primary') }}{% endif %}
+    {% if c.state == 'Assess' %}{{ btn('send_cab', c.id, variant='primary') }}{% endif %}
+    {% if c.state == 'Authorize' %}{{ btn('approve_change', c.id, label='Approve', variant='primary') }}{{ btn('reject_change', c.id, label='Reject', variant='danger') }}{% endif %}
+    {% if c.state == 'Scheduled' %}{{ btn('start_impl', c.id, variant='primary') }}{% endif %}
+    {% if c.state == 'Implement' %}{{ btn('complete_impl', c.id, variant='primary') }}{% endif %}
+    {% if c.state == 'Review' %}{{ btn('close_change', c.id, variant='primary') }}{% endif %}
+  </div></div>
+  <div class="panel-b stack">
+    <div class="flow">{% for s in d.flow %}<span class="{{ 'cur' if s == c.state else ('done' if loop.index0 < d.idx else '') }}">{{ s }}</span>{% endfor %}</div>
+    <div class="grid2">
+      <dl class="kv"><dt>Type</dt><dd>{{ c.type }}</dd><dt>Risk</dt><dd>{{ c.risk }}</dd><dt>Requested by</dt><dd>{{ ctl.name(c.requested_by) }}</dd><dt>Implementer</dt><dd>{{ ctl.name(c.implementer) }}</dd><dt>Window</dt><dd>{{ c.win or '—' }}</dd><dt>Release</dt><dd>{% if c.release_id %}<span class="mono">{{ c.release_id }}</span>{% else %}—{% endif %}</dd></dl>
+      <div class="stack"><h3>Approvals · {% if d.required %}{{ d.approvals }} of {{ d.required }} required{% else %}pre-approved standard change{% endif %}</h3>
+        {% if d.votes %}<ul class="plain">{% for v in d.votes %}<li class="row">{{ pill('pass','Approved') if v.decision == 'approved' else pill('fail','Rejected') }} {{ ctl.name(v.uid) }} <span class="muted">({{ role_names(v.uid) }})</span></li>{% endfor %}</ul>
+        {% else %}<div class="muted">No votes yet.</div>{% endif %}
+        {% if c.state == 'Authorize' %}<div class="muted" style="font-size:12.5px">Eligible voters: {{ d.eligible|join(', ') }}</div>{% endif %}
+      </div>
+    </div>
+  </div></div>
+{% endif %}
+{% endblock %}

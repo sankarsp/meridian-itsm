@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}{% endblock %} · Meridian ITSM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark"></div><div><b>Meridian</b><small>IT service management</small></div></div>
+    {% for group in nav %}
+    <div class="navgroup"><div class="navlabel">{{ group.label }}</div>
+      {% for l in group.links %}
+      <a class="nav" href="{{ url_for(l.ep) }}" {% if request.endpoint == l.ep %}aria-current="page"{% endif %}>
+        <span>{{ l.label }}</span>
+        {% if l.locked %}<span class="lock">locked</span>{% elif l.count is defined %}<span class="count">{{ l.count }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% if demo %}<form class="reset" method="post" action="{{ url_for('reset') }}"><button class="nav" type="submit">Reset demo data</button></form>{% endif %}
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div class="who">
+        <div class="avatar">{% for p in me_user.name.split() %}{{ p[0] }}{% endfor %}</div>
+        <form method="post" action="{{ url_for('login') }}">
+          <div class="field" style="gap:2px">
+            <label for="whoSel">Signed in as</label>
+            <select id="whoSel" name="uid" onchange="this.form.submit()">
+              {% for u in users.values() %}<option value="{{ u.id }}" {% if u.id == me %}selected{% endif %}>{{ u.name }} — {{ role_names(u.id) or 'no roles' }}</option>{% endfor %}
+            </select>
+          </div>
+          <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+          <noscript><button class="btn sm" type="submit">Switch</button></noscript>
+        </form>
+        <div class="chips">{% for r in ctl.roles_of() %}<span class="role">{{ ROLES[r].name }}</span>{% endfor %}</div>
+      </div>
+      <div class="row muted" style="font-size:12px"><span class="mono">{{ now_label }}</span>{% if demo %}<span>· Demo sign-in. Replace with SSO before real use.</span>{% endif %}</div>
+    </header>
+    {% if freeze %}<div class="freeze"><b>Quarter-end change freeze is active.</b><span>Normal and standard changes cannot be implemented, and production deploys need an emergency change.</span></div>{% endif %}
+    <main class="content">{% block content %}{% endblock %}</main>
+  </div>
+</div>
+{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}{% set m = msgs[-1] %}
+<div class="toast {{ 'deny' if m[0] == 'deny' }}" id="toast" role="status">{{ m[1] }}</div>
+<script>setTimeout(function(){var t=document.getElementById('toast');if(t)t.hidden=true},4500)</script>
+{% endif %}{% endwith %}
+</body>
+</html>

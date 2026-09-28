@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block title %}Incidents{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Incidents</h1><p>Anyone can log an incident. Only Service Desk Agents can assign and resolve them.</p></div>
+  <div class="row"><a class="btn {{ 'locked' if create_block else 'primary' }}" href="{{ url_for('incidents', new=1) }}" {% if create_block %}title="{{ create_block }}"{% endif %}>Log incident</a></div></div>
+{% if show_form %}
+<div class="panel panel-b"><form class="form" method="post" action="{{ url_for('incidents') }}">
+  <div class="field wide"><label for="incD">Short description</label><input id="incD" name="descr" required placeholder="What is broken, and for whom?"></div>
+  <div class="field"><label for="incP">Priority</label><select id="incP" name="priority"><option value="1">P1 · Critical</option><option value="2">P2 · High</option><option value="3" selected>P3 · Moderate</option><option value="4">P4 · Low</option></select></div>
+  <div class="row"><button class="btn primary" type="submit">Submit incident</button><a class="btn" href="{{ url_for('incidents') }}">Cancel</a></div>
+</form></div>
+{% endif %}
+<div class="panel tw"><table>
+<thead><tr><th>Number</th><th>Pri</th><th>Short description</th><th>Caller</th><th>Assigned to</th><th>State</th><th>Opened</th><th></th></tr></thead>
+<tbody>
+{% for i in rows %}
+<tr><td class="mono">{{ i.id }}</td><td><span class="pr pr{{ i.priority }}">P{{ i.priority }}</span></td><td>{{ i.descr }}</td>
+<td>{{ ctl.name(i.caller) }}</td><td>{% if i.assignee %}{{ ctl.name(i.assignee) }}{% else %}<span class="muted">Unassigned</span>{% endif %}</td>
+<td>{{ pill(i.state) }}</td><td class="mono muted">{{ fmt(i.opened) }}</td>
+<td><div class="row">{% if i.state == 'New' %}{{ btn('assign_inc', i.id, sm=True) }}{% endif %}{% if i.state != 'Resolved' %}{{ btn('resolve_inc', i.id, label='Resolve', sm=True) }}{% endif %}</div></td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

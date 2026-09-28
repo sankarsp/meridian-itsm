@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>{{ title }}</h1><p>You don’t have access to this page.</p></div></div>
+<div class="panel panel-b stack">
+  <div class="note bad">Requires the “{{ PERM_LABEL[perm] }}” permission.</div>
+  <p class="muted" style="margin:0">Roles that grant it: {% for h in holders %}<span class="role">{{ h }}</span> {% endfor %}. Request one from Access requests.</p>
+  <div class="row"><a class="btn primary" href="{{ url_for('access') }}">Request access</a></div>
+</div>
+{% endblock %}

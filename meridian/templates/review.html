@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}Access review{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Access review</h1><p>Quarterly user access certification. Certify each role assignment or revoke it. Reviewers cannot certify or revoke their own access.</p></div>
+  <div class="row muted mono">{{ done }}/{{ rows|length }} certified this cycle</div></div>
+<div class="panel tw"><table>
+<thead><tr><th>User</th><th>Department</th><th>Role</th><th>Expires</th><th>Last certified</th><th>Risk</th><th></th></tr></thead>
+<tbody>
+{% for x in rows %}{% set a = x.a %}
+<tr><td>{{ a.name }}</td><td class="muted">{{ a.dept }}</td><td><span class="role">{{ ROLES[a.role].name }}</span></td>
+<td class="mono">{{ fdate(a.expires) if a.expires else 'Permanent' }}</td>
+<td>{{ pill('Pending', fdate(a.certified) if a.certified else 'Never') if x.overdue else pill('pass', fdate(a.certified)) }}</td>
+<td>{% if x.toxic %}<span class="pill p-bad" title="{{ x.toxic[0][2] }}">SoD conflict</span>{% elif a.expires %}{{ pill('pending','Temporary') }}{% else %}<span class="muted">—</span>{% endif %}</td>
+<td><div class="row">{{ btn('certify', a.id|string, label='Certify', sm=True) }}{{ btn('revoke', a.id|string, label='Revoke', variant='danger', sm=True) }}</div></td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

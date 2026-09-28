@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}Access requests{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Access requests</h1><p>Anyone can request a role. Grants are time-bound and approved by an IAM Administrator, who cannot approve their own requests. Toxic role combinations are flagged before approval.</p></div></div>
+<div class="panel"><div class="panel-h"><h2>Request a role</h2><span class="muted">for {{ me_user.name }}</span></div><div class="panel-b">
+{% if available %}
+<form class="form" method="post" action="{{ url_for('access') }}">
+  <div class="field"><label for="arR">Role</label><select id="arR" name="role">{% for r in available %}<option value="{{ r }}">{{ ROLES[r].name }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="arD">Duration</label><select id="arD" name="days">{% for d in durations %}<option value="{{ d }}" {% if d == 30 %}selected{% endif %}>{{ d }} days</option>{% endfor %}</select></div>
+  <div class="field wide"><label for="arW">Business justification</label><input id="arW" name="why" required placeholder="Why do you need this access?"></div>
+  {% for r, ts in conflicts.items() if ts %}{% for t in ts %}
+  <div class="note warn field wide">Requesting {{ ROLES[r].name }} would conflict: {{ ROLES[t[0]].name }} + {{ ROLES[t[1]].name }}. {{ t[2] }}. Approval is recorded as an exception.</div>
+  {% endfor %}{% endfor %}
+  <div class="row"><button class="btn primary" type="submit">Submit request</button></div>
+</form>
+{% else %}<div class="muted">You already hold every role.</div>{% endif %}
+</div></div>
+<div class="panel tw"><table>
+<thead><tr><th>Request</th><th>Requested for</th><th>Role</th><th>Duration</th><th>Justification</th><th>SoD check</th><th>State</th><th></th></tr></thead>
+<tbody>
+{% for x in rows %}{% set a = x.a %}
+<tr><td class="mono">{{ a.id }}</td><td>{{ ctl.name(a.uid) }}</td><td><span class="role">{{ ROLES[a.role].name }}</span></td><td class="mono">{{ a.days }}d</td><td>{{ a.why }}</td>
+<td>{% if a.state != 'Pending' %}{% if a.exception %}{{ pill('fail','Exception granted') }}{% else %}<span class="muted">—</span>{% endif %}
+    {% elif x.conflicts %}<span class="pill p-bad" title="{{ x.conflicts|map(attribute=2)|join('; ') }}">Conflict</span>{% else %}{{ pill('pass','Clear') }}{% endif %}</td>
+<td>{{ pill(a.state) }}{% if a.decided_by %}<div class="muted" style="font-size:12px">by {{ ctl.name(a.decided_by) }}</div>{% endif %}</td>
+<td><div class="row">{% if a.state == 'Pending' %}{{ btn('approve_access', a.id, variant='primary', sm=True) }}{{ btn('reject_access', a.id, label='Reject', variant='danger', sm=True) }}{% endif %}</div></td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

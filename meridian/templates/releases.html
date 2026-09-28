@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block title %}Releases{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Releases</h1><p>Each promotion checks its quality gates. Production also needs an authorized change and a reviewed rollback plan, and must be deployed by someone other than the person who built the release.</p></div></div>
+{% for x in releases %}{% set r = x.r %}
+<div class="panel"><div class="panel-h"><div><span class="mono muted">{{ r.id }} · built by {{ ctl.name(r.built_by) }}</span><h2>{{ r.name }}</h2></div>
+  <div class="row">{% if r.stage < 3 %}{{ btn('promote', r.id, variant='primary') }}{% elif r.stage == 3 %}{{ btn('deploy', r.id, variant='primary') }}{% else %}{{ pill('pass','Live in production') }}{% endif %}</div></div>
+  <div class="panel-b stack">
+    <div class="pipe">{% for s in stages %}<div class="stage {{ 'done' if loop.index0 < r.stage else ('cur' if loop.index0 == r.stage else '') }}"><b>{{ s }}</b>{{ 'Passed' if loop.index0 < r.stage else ('Current' if loop.index0 == r.stage else '—') }}</div>{% endfor %}</div>
+    <div class="gates">
+    {% for gt in x.gates %}
+      <div class="gate"><div class="gl"><span>{{ gt.label }}{% if gt.required_next %} <span class="pill p-warn" style="font-size:10.5px">required next</span>{% endif %}</span><small>{{ gt.who }}{% if gt.note %} · {{ gt.note }}{% endif %}</small></div>
+        <div class="row">{{ pill(gt.state, 'Passed' if gt.state == 'pass' else ('Failed' if gt.state == 'fail' else 'Pending')) }}
+        {% if r.stage < 4 and gt.state != 'pass' %}
+          {% if gt.key == 'cab' %}{% if x.change %}<a class="btn sm" href="{{ url_for('changes', id=x.change.id) }}">View change</a>{% endif %}
+          {% elif gt.auto %}{{ btn('rerun', r.id ~ '|' ~ gt.key, label='Re-run', sm=True) }}
+          {% else %}{{ btn('sign_gate', r.id ~ '|' ~ gt.key, label='Sign off', sm=True) }}{% endif %}
+        {% endif %}</div></div>
+    {% endfor %}
+    </div>
+    <div class="muted" style="font-size:12.5px">Scope: {{ x['items']|join(' · ') }}</div>
+  </div></div>
+{% endfor %}
+{% endblock %}

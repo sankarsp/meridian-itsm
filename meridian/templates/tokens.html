@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% block title %}API tokens{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>API tokens</h1><p>A token acts as you, with exactly your roles. The API enforces the same permissions, segregation-of-duties rules, freeze and gates as this screen, and logs every call.</p></div></div>
+{% if new_token %}
+<div class="panel panel-b stack">
+  <div class="note ok">Copy this token now. It won’t be shown again.</div>
+  <code class="mono" style="word-break:break-all;padding:10px 12px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r)">{{ new_token }}</code>
+  <div class="muted" style="font-size:12.5px">Try it:</div>
+  <pre class="mono tw" style="margin:0;padding:10px 12px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r)">curl -H "Authorization: Bearer {{ new_token }}" {{ base }}/api/v1/me</pre>
+</div>
+{% endif %}
+<div class="panel"><div class="panel-h"><h2>Create a token for {{ me_user.name }}</h2></div><div class="panel-b">
+  <form class="form" method="post" action="{{ url_for('api_tokens') }}">
+    <div class="field"><label for="tkN">Token name</label><input id="tkN" name="name" placeholder="e.g. GitHub Actions deploy"></div>
+    <div class="row"><button class="btn primary" type="submit">Create token</button></div>
+  </form>
+</div></div>
+<div class="panel tw"><table>
+<thead><tr><th>Name</th><th>Created</th><th>Last used</th><th>Status</th><th></th></tr></thead>
+<tbody>
+{% for t in rows %}
+<tr><td>{{ t.name }}</td><td class="mono muted">{{ fmt(t.created) }}</td><td class="mono muted">{{ fmt(t.last_used) }}</td>
+<td>{{ pill('fail','Revoked') if t.revoked else pill('pass','Active') }}</td>
+<td>{% if not t.revoked %}<form class="inline" method="post" action="{{ url_for('api_tokens') }}"><input type="hidden" name="revoke" value="{{ t.id }}"><button class="btn sm danger" type="submit">Revoke</button></form>{% endif %}</td></tr>
+{% else %}
+<tr><td colspan="5" class="empty">No tokens yet. Create one above, or from the command line with <span class="mono">flask --app wsgi create-token {{ me }}</span>.</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

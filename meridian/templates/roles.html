@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}Roles & permissions{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Roles & permissions</h1><p>{% if editable %}You can edit this matrix. Changes apply immediately to every user holding the role.{% else %}Read-only. Only IAM Administrators can change role permissions.{% endif %}</p></div></div>
+<div class="panel tw matrix"><table>
+<thead><tr><th>Permission</th>{% for r in ROLES %}<th class="rot">{{ ROLES[r].name }}<div class="muted mono" style="font-size:11px">{{ members[r] }} users</div></th>{% endfor %}</tr></thead>
+<tbody>
+{% set ns = namespace(group='') %}
+{% for p in PERMS %}
+  {% if p.group != ns.group %}{% set ns.group = p.group %}<tr><td class="grp" colspan="{{ ROLES|length + 1 }}">{{ p.group }}</td></tr>{% endif %}
+  <tr><td>{{ p.label }}<div class="mono muted" style="font-size:11px">{{ p.key }}</div></td>
+  {% for r in ROLES %}{% set on = p.key in matrix[r] %}
+    <td class="c">{% if editable %}<form class="inline" method="post" action="{{ url_for('act', key='perm') }}"><input type="hidden" name="target" value="{{ r }}|{{ p.key }}"><input type="hidden" name="next" value="{{ url_for('roles') }}"><button class="cell {{ 'on' if on }}" type="submit" aria-pressed="{{ 'true' if on else 'false' }}" aria-label="{{ ROLES[r].name }}: {{ p.label }}">{{ '✓' if on }}</button></form>
+    {% else %}<span class="cell ro {{ 'on' if on }}" aria-label="{{ 'granted' if on else 'not granted' }}">{{ '✓' if on }}</span>{% endif %}</td>
+  {% endfor %}</tr>
+{% endfor %}
+</tbody></table></div>
+<div class="grid2">
+  <div class="panel"><div class="panel-h"><h2>Segregation of duties rules</h2></div><div class="panel-b"><ul class="plain">
+    <li><b>Maker–checker on changes.</b> <span class="muted">The requester and the implementer cannot vote on their own change.</span></li>
+    <li><b>Build ≠ deploy.</b> <span class="muted">The person who built a release cannot sign its gates or deploy it to production.</span></li>
+    <li><b>No self-approval of access.</b> <span class="muted">Access requests and certifications need a second person.</span></li>
+    <li><b>Freeze windows.</b> <span class="muted">During a freeze only emergency changes can be implemented or deployed.</span></li>
+  </ul></div></div>
+  <div class="panel"><div class="panel-h"><h2>Toxic role combinations</h2></div><div class="panel-b"><ul class="plain">
+    {% for t in toxic %}<li><span class="role">{{ ROLES[t[0]].name }}</span> + <span class="role">{{ ROLES[t[1]].name }}</span><div class="muted">{{ t[2] }}</div></li>{% endfor %}
+  </ul></div></div>
+</div>
+{% endblock %}

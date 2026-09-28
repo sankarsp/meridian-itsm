@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Audit log</h1><p>Every permitted and blocked action, with who did it and which roles they held at the time. The database rejects edits and deletes to this table.</p></div>
+  <div class="row mono muted">{{ blocked }} blocked · {{ total }} total</div></div>
+<div class="panel tw"><table>
+<thead><tr><th>Time</th><th>User</th><th>Roles at time</th><th>Action</th><th>Record</th><th>Via</th><th>Outcome</th></tr></thead>
+<tbody>
+{% for e in rows %}
+<tr><td class="mono muted">{{ fmt(e.at) }}</td><td>{{ ctl.name(e.uid) }}</td><td class="muted" style="font-size:12px">{{ e.roles }}</td>
+<td>{{ e.action }}{% if e.detail %}<div class="muted" style="font-size:12px">{{ e.detail }}</div>{% endif %}</td>
+<td class="mono">{{ e.record or '—' }}</td><td><span class="role">{{ 'API' if e.channel == 'api' else 'Web' }}</span></td><td>{{ pill(e.outcome, 'Allowed' if e.outcome == 'allowed' else 'Blocked') }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}

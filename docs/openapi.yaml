@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: Meridian ITSM API
+  version: "1.0"
+  description: |
+    Every call runs as the token's user, with that user's roles. Permissions,
+    segregation of duties, the change freeze and release gates are enforced
+    exactly as in the web UI, and every write is recorded in the audit log.
+
+    Error codes: 400 invalid (bad body), 401 unauthorized (missing or bad
+    token), 403 forbidden (missing permission), 404 not_found, 409
+    blocked_by_control (SoD, freeze, gate or workflow state).
+servers:
+  - url: http://localhost:5000/api/v1
+security:
+  - bearer: []
+components:
+  securitySchemes:
+    bearer: {type: http, scheme: bearer, description: "Token starting with mrd_"}
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: {type: string, enum: [invalid, unauthorized, forbidden, not_found, blocked_by_control]}
+        message: {type: string}
+    ActionResult:
+      type: object
+      properties:
+        ok: {type: boolean}
+        message: {type: string}
+        action: {type: string}
+        target: {type: string}
+    Incident:
+      type: object
+      properties:
+        id: {type: string, example: INC0041187}
+        descr: {type: string}
+        priority: {type: integer, minimum: 1, maximum: 4}
+        state: {type: string, enum: [New, In Progress, Resolved]}
+        caller: {type: string}
+        assignee: {type: string, nullable: true}
+        opened: {type: string, format: date-time}
+    Change:
+      type: object
+      properties:
+        id: {type: string, example: CHG0030412}
+        title: {type: string}
+        type: {type: string, enum: [Standard, Normal, Emergency]}
+        risk: {type: string, enum: [Low, Moderate, High]}
+        state: {type: string, enum: [New, Assess, Authorize, Scheduled, Implement, Review, Closed, Rejected]}
+        requested_by: {type: string}
+        implementer: {type: string}
+        win: {type: string}
+        release_id: {type: string, nullable: true}
+        approvals: {type: integer}
+        approvals_required: {type: integer}
+        votes:
+          type: array
+          items: {type: object, properties: {uid: {type: string}, decision: {type: string}, at: {type: string, format: date-time}}}
+    Gate:
+      type: object
+      properties:
+        label: {type: string}
+        status: {type: string, enum: [pass, fail, pending]}
+        signed_by: {type: string, nullable: true}
+        note: {type: string, nullable: true}
+        automated: {type: boolean}
+    Release:
+      type: object
+      properties:
+        id: {type: string, example: REL-26.10}
+        name: {type: string}
+        stage: {type: integer}
+        stage_name: {type: string, enum: [Dev, QA, UAT, Staging, Production]}
+        next_stage: {type: string}
+        missing_gates: {type: array, items: {type: string}}
+        built_by: {type: string}
+        change_id: {type: string}
+        items: {type: array, items: {type: string}}
+        gates:
+          type: object
+          properties: {build: {$ref: '#/components/schemas/Gate'}, sec: {$ref: '#/components/schemas/Gate'},
+                       uat: {$ref: '#/components/schemas/Gate'}, cab: {$ref: '#/components/schemas/Gate'},
+                       rollback: {$ref: '#/components/schemas/Gate'}}
+  responses:
+    Err:
+      description: Error
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+paths:
+  /me:
+    get:
+      summary: The caller's user, roles, permissions and SoD exceptions
+      responses: {"200": {description: OK}, "401": {$ref: '#/components/responses/Err'}}
+  /users:
+    get: {summary: Users and their active roles, responses: {"200": {description: OK}}}
+  /roles:
+    get: {summary: Role-permission matrix, responses: {"200": {description: OK}}}
+  /incidents:
+    get:
+      summary: List incidents
+      parameters: [{name: state, in: query, schema: {type: string}}]
+      responses: {"200": {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Incident'}}}}}}
+    post:
+      summary: Log an incident (incident.create)
+      requestBody:
+        content: {application/json: {schema: {type: object, required: [description], properties: {description: {type: string}, priority: {type: integer, default: 3}}}}}
+      responses: {"201": {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Incident'}}}}, "400": {$ref: '#/components/responses/Err'}, "403": {$ref: '#/components/responses/Err'}}
+  /incidents/{id}:
+    get:
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Incident'}}}}, "404": {$ref: '#/components/responses/Err'}}
+  /changes:
+    get:
+      summary: List changes with votes
+      parameters: [{name: state, in: query, schema: {type: string}}]
+      responses: {"200": {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Change'}}}}}}
+    post:
+      summary: Raise a change (change.create)
+      requestBody:
+        content: {application/json: {schema: {type: object, required: [title], properties: {title: {type: string}, type: {type: string, default: Normal}, risk: {type: string, default: Moderate}, implementer: {type: string}, window: {type: string}}}}}
+      responses: {"201": {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Change'}}}}, "400": {$ref: '#/components/responses/Err'}, "403": {$ref: '#/components/responses/Err'}}
+  /changes/{id}:
+    get:
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Change'}}}}, "404": {$ref: '#/components/responses/Err'}}
+  /releases:
+    get: {summary: List releases with gate status, responses: {"200": {description: OK, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Release'}}}}}}}
+  /releases/{id}:
+    get:
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: OK, content: {application/json: {schema: {$ref: '#/components/schemas/Release'}}}}, "404": {$ref: '#/components/responses/Err'}}
+  /releases/{id}/gates/{gate}:
+    post:
+      summary: CI/CD webhook - report a build or security-scan result (release.gate)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: gate, in: path, required: true, schema: {type: string, enum: [build, sec]}}
+      requestBody:
+        content: {application/json: {schema: {type: object, required: [status], properties: {status: {type: string, enum: [pass, fail]}, note: {type: string}}}}}
+      responses: {"200": {description: Updated release, content: {application/json: {schema: {$ref: '#/components/schemas/Release'}}}}, "403": {$ref: '#/components/responses/Err'}, "409": {$ref: '#/components/responses/Err'}}
+  /access-requests:
+    get: {summary: Access requests with SoD conflicts, responses: {"200": {description: OK}}}
+    post:
+      summary: Request a role for yourself (access.request)
+      requestBody:
+        content: {application/json: {schema: {type: object, required: [role, justification], properties: {role: {type: string}, days: {type: integer, enum: [14, 30, 90]}, justification: {type: string}}}}}
+      responses: {"201": {description: Created}, "400": {$ref: '#/components/responses/Err'}}
+  /assignments:
+    get: {summary: All role assignments (access.review), responses: {"200": {description: OK}, "403": {$ref: '#/components/responses/Err'}}}
+  /audit:
+    get:
+      summary: Audit log, newest first (audit.view)
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, default: 100, maximum: 1000}}
+        - {name: outcome, in: query, schema: {type: string, enum: [allowed, denied]}}
+      responses: {"200": {description: OK}, "403": {$ref: '#/components/responses/Err'}}
+  /settings/freeze:
+    get: {summary: Whether the change freeze is active, responses: {"200": {description: OK}}}
+  /actions:
+    get:
+      summary: Workflow action catalog; with ?target=, says whether each is allowed for the caller and why not
+      parameters: [{name: target, in: query, schema: {type: string}}]
+      responses: {"200": {description: OK}}
+  /actions/{key}:
+    post:
+      summary: Run a workflow action
+      description: |
+        Keys: assign_inc, resolve_inc, submit_change, send_cab, approve_change, reject_change,
+        start_impl, complete_impl, close_change, promote, deploy, sign_gate (target "REL-26.10|rollback"),
+        rerun (target "REL-26.11|sec"), approve_access, reject_access, certify, revoke, freeze (no target),
+        perm (target "cab|release.gate").
+      parameters: [{name: key, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        content: {application/json: {schema: {type: object, properties: {target: {type: string}}}}}
+      responses:
+        "200": {description: Done, content: {application/json: {schema: {$ref: '#/components/schemas/ActionResult'}}}}
+        "403": {$ref: '#/components/responses/Err'}
+        "404": {$ref: '#/components/responses/Err'}
+        "409": {$ref: '#/components/responses/Err'}

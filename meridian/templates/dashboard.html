@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="pagehead"><div><h1>Good {{ greeting }}, {{ me_user.name.split()[0] }}</h1>
+<p>Switch the “Signed in as” user to see how each role’s menus, buttons and approvals change. Every permission and segregation-of-duties check runs on the server, and blocked attempts are written to the audit log.</p></div></div>
+<div class="grid4">
+  <div class="panel stat"><span class="l">Open incidents</span><span class="n">{{ stats.open }}</span><span class="s {{ 'pr1' if stats.p1 else 'muted' }}">{{ stats.p1 }} priority 1</span></div>
+  <div class="panel stat"><span class="l">Changes awaiting CAB</span><span class="n">{{ stats.cab }}</span><span class="s muted">Normal changes need 2 votes</span></div>
+  <div class="panel stat"><span class="l">Releases in flight</span><span class="n">{{ stats.rel }}</span><span class="s muted">{{ stats.rel_blocked }} blocked at a gate</span></div>
+  <div class="panel stat"><span class="l">Pending access requests</span><span class="n">{{ stats.ar }}</span><span class="s muted">{{ stats.ar_conflicts }} with SoD conflict</span></div>
+</div>
+<div class="grid2">
+  <div class="panel"><div class="panel-h"><h2>My work</h2><span class="muted mono">{{ tasks|length }} items</span></div>
+    <div class="panel-b">
+    {% for t in tasks %}
+      <div class="task"><div style="min-width:0"><div><b>{{ t[0] }}</b> · <span class="mono">{{ t[1] }}</span></div><div class="muted">{{ t[2] }}</div></div><a class="btn sm" href="{{ t[3] }}">Open</a></div>
+    {% else %}
+      <div class="muted">Nothing needs your action right now. Try signing in as Elena Petrova (Change Manager) or David Okafor (Release Manager).</div>
+    {% endfor %}
+    </div>
+  </div>
+  <div class="stack">
+    <div class="panel"><div class="panel-h"><h2>Your access</h2><span class="muted">{{ perm_count }} of {{ total_perms }} permissions</span></div>
+      <div class="panel-b stack">
+        {% for r in my_roles %}<div><span class="role">{{ ROLES[r].name }}</span> <span class="muted">{{ ROLES[r].desc }}</span></div>{% endfor %}
+        {% for t in my_toxic %}<div class="note warn">SoD exception: {{ ROLES[t[0]].name }} + {{ ROLES[t[1]].name }}. {{ t[2] }}.</div>{% endfor %}
+      </div>
+    </div>
+    <div class="panel"><div class="panel-h"><h2>Change freeze</h2>{{ pill('fail','Active') if freeze else pill('pending','Not active') }}</div>
+      <div class="panel-b stack"><div class="muted">Quarter-end freeze window: Sep 30 – Oct 3. When active, only emergency changes may be implemented or deployed to production.</div>
+      <div class="row">{{ btn('freeze') }}</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
